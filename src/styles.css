@@ -1,0 +1,267 @@
+@import './themes.css';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-color);
+  font-family: "Euclid Circular A";
+  color: var(--text-color);
+}
+
+@media print {
+  body * {
+      visibility: hidden; /* Masquer tout le contenu */
+  }
+  .printable-section, .printable-section * {
+      visibility: visible;
+  }
+  .printable-section {
+      position: absolute;
+      left: 0;
+      top: 0;
+  }
+
+  .printable-section .no-printable-section {
+    display: none !important; /* Supprimer complètement les éléments avec cette classe */
+}
+}
+
+
+
+button {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 260px;
+  height: 100%;
+  padding: 0 16px;
+  background: var(--bg-color);
+
+  border-right: 1px solid var(--secondary-color);
+ 
+  transition: width var(--transition-speed);
+  overflow-y: auto; 
+  overflow-x: hidden;
+}
+
+
+
+.sidebar.closed {
+  width: 85px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  min-height: 72px;
+  max-height: 72px;
+  padding: 0 1.25rem 0 0;
+  border-bottom: 1px solid var(--secondary-color);
+  color: var(--text-color);
+}
+
+
+.user_link{
+  border: 2px solid dark;
+  display: flex;
+  cursor: pointer;
+  border-radius: 20px;
+
+  transition: opacity 0.5s ease, max-height 0.5s ease-out;
+
+}
+.user_link.invisible {
+  opacity: 0;
+  
+ }
+
+.user_link:hover{
+  background: var(--secondary-color)
+ 
+}
+
+
+
+
+.admin-title {
+  margin-left: 16px;
+}
+
+
+
+.dropdown-menu {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  right: 130px;
+  top:60px;
+  z-index: 10000;
+  background-color: var(--bg-color);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #201e1e;
+  border-radius: 4px;
+  width: 200px;
+}
+
+.dropdown-menu span {
+  padding: 4px;
+  cursor: pointer;
+  width:150px;
+  display: flex;
+  justify-content: center;
+}
+
+
+.dropdown-menu span.username{
+  
+  background-color: rgb(173, 184, 22);
+ font-weight: bolder;
+}
+.dropdown-menu span.username:hover{
+  background-color: rgb(173, 184, 22);
+}
+
+.dropdown-menu span:hover{
+  background-color: var(--secondary-color) ;
+}
+
+.sidebar .sidebar-header button {
+  width: 54px;
+}
+
+.sidebar-logo {
+  height: 40px;
+  margin-left: 16px;
+  transition: 0.2s;
+  margin-top: 5px;
+}
+
+.sidebar button {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  height: 50px;
+  width: 100%;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1;
+  padding: 0 16px;
+  color: var(--text-color);
+  transition: var(--transition-speed);
+
+  cursor: pointer;
+  
+}
+
+.sidebar button span:nth-child(2) {
+  flex: 1 1 auto;
+}
+
+.sidebar button:is(.active, :hover) {
+  background: var(--primary-color);
+  color: var(--text-color);
+}
+
+.sidebar button span {
+  transition: var(--transition-speed);
+}
+
+.sidebar button.active > span:nth-child(3) {
+  transform: rotate(-180deg);
+}
+
+.sidebar button:not(.active):hover {
+  background: var(--secondary-color);
+  
+}
+
+.sub-nav {
+  overflow: hidden;
+  transition: var(--transition-speed);
+  background-color: beige;
+}
+
+
+
+
+.sub-nav button {
+  padding-left: 24px;
+}
+
+
+
+.material-symbols-outlined {
+  font-size: 22px;
+}
+
+.main-content {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  margin-left: 260px;
+  padding: 20px;
+  transition: margin-left var(--transition-speed);
+  min-height: 100vh;
+}
+
+.main-content.sidebar-closed {
+  margin-left: 85px;
+}
+
+/* Tooltip styles */
+.sidebar.closed button {
+  position: relative;
+}
+
+/* Custom scrollbar styles */
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: var(--secondary-color);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-color);
+  border-radius: 10px;
+  border: 2px solid var(--secondary-color);
+}
+
+
+
+.impression-page{
+  width: 794px;
+  padding: 40px;
+  
+
+  margin-bottom: 20px;
+
+  page-break-after: always;
+  
+  box-sizing: border-box; 
+}
+
+
+
+
+
+
+
+
+

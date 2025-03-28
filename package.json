@@ -1,0 +1,62 @@
+{
+  "homepage": "http://192.1.1.44:8080",
+  "name": "gc.snit",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "@mui/icons-material": "^5.15.21",
+    "@mui/lab": "^5.0.0-alpha.110",
+    "@mui/material": "^5.15.20",
+    "@mui/x-data-grid": "^7.7.1",
+    "@react-pdf/render": "^3.4.4",
+    "@react-pdf/renderer": "^3.4.4",
+    "@types/node": "^16.18.3",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.0.8",
+    "axios": "^1.7.2",
+    "date-fns": "^3.6.0",
+    "decimal.js": "^10.4.3",
+    "file-saver": "^2.0.5",
+    "html2canvas": "^1.4.1",
+    "html2pdf.js": "^0.10.2",
+    "jspdf": "^2.5.1",
+    "jszip": "^3.10.1",
+    "pdfmake": "^0.2.10",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-quill": "^2.0.0",
+    "react-responsive-carousel": "^3.2.23",
+    "react-router-dom": "^6.23.1",
+    "react-scripts": "5.0.1",
+    "react-toastify": "^10.0.5"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/pdfmake": "^0.2.9"
+  }
+}

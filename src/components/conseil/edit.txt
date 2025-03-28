@@ -1,0 +1,706 @@
+import { useState, useEffect, useRef } from "react";
+import { 
+  Box, TextField, Button, Typography, IconButton, List, ListItem, 
+  ListItemText, Paper, FormControl, InputLabel, MenuItem, Select, 
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow 
+} from "@mui/material";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import { api } from "../../config/config";
+import { toast } from "react-toastify";
+import { useParams, useNavigate } from "react-router-dom";
+import { 
+  Membre, Point, Presence, PresenceRequest, PointRequest, DocumentRequest, Conseil 
+} from "../../config/types";
+import {
+  getConseilDetails,
+  updateConseil,
+  updatePresence,
+  addPresence,
+  deletePresence,
+  updatePoint,
+  addPoint,
+  deletePoint,
+  updatePv,
+  deleteDocument,
+  addDocumentToPoint
+} from "./methods";
+
+const ModifierConseil = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [conseil, setConseil] = useState<Conseil | null>(null);
+  const [nom, setNom] = useState("");
+  const [dReunion, setDReunion] = useState("");
+  const [membres, setMembres] = useState<Membre[]>([]);
+  const [points, setPoints] = useState<Partial<Point>[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [presences, setPresences] = useState<PresenceRequest[]>([]);
+  const [pv, setPv] = useState<File | null>(null);
+  const [existingPv, setExistingPv] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Récupérer les membres actifs
+        const membresResponse = await api.get("/membres/actif");
+        setMembres(membresResponse.data);
+        
+        // Récupérer les détails du conseil
+        const conseilDetails = await getConseilDetails(Number(id)) as Conseil;
+        setConseil(conseilDetails);
+        setNom(conseilDetails.nom);
+        setDReunion(conseilDetails.dreunion.split('T')[0]); // Format YYYY-MM-DD
+        
+        // Initialiser les points
+        const formattedPoints = conseilDetails.points.map(point => ({
+          id: point.id,
+          numero: point.numero,
+          nom: point.nom,
+          documents: point.documents.map(doc => ({
+            id: doc.id,
+            name: doc.name,
+            url:''
+          }))
+        }));
+        setPoints(formattedPoints);
+        
+        // Initialiser les présences
+        const initialPresences = membresResponse.data.map((membre: Membre) => {
+          const existingPresence = conseilDetails.presences.find(p => p.membre.id === membre.id);
+          return existingPresence ? {
+            id: existingPresence.id,
+            membre: membre.id,
+            statut: existingPresence.statut,
+            delegueA: existingPresence.delegueA?.id,
+            document: existingPresence.document ? {
+              id: existingPresence.document.id,
+              name: existingPresence.document.name,
+              file: null
+            } : undefined
+          } : {
+            membre: membre.id,
+            statut: "P" as const,
+            delegueA: undefined,
+            document: undefined
+          };
+        });
+        setPresences(initialPresences);
+        
+        // Initialiser le PV
+        if (conseilDetails.pv) {
+          setExistingPv(conseilDetails.pv.name);
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Erreur lors du chargement des données:", error);
+        toast.error("Erreur lors du chargement des données du conseil");
+        navigate("/conseils");
+      }
+    };
+    
+    fetchData();
+  }, [id, navigate]);
+
+  const handleAddPoint = () => {
+    const numero = points.length + 1;
+    if (inputValue.trim() !== "") {
+      const point: Partial<Point> = { 
+        nom: inputValue, 
+        numero, 
+        documents: [], 
+        selectedFile: undefined 
+      };
+      setPoints([...points, point]);
+      setInputValue("");
+    }
+  };
+
+  const handleAddDocument = async (pointId: number | undefined, numero: number) => {
+    const pointIndex = points.findIndex(p => p.numero === numero);
+    if (pointIndex === -1 || !points[pointIndex].selectedFile) return;
+
+    try {
+      if (pointId) {
+        // Point existant - ajouter le document via API
+        const formData = new FormData();
+        formData.append('document', points[pointIndex].selectedFile!) ;
+        formData.append('nom', points[pointIndex].selectedFile!.name);
+        
+        const addedDoc = await addDocumentToPoint(pointId, formData);
+        
+        setPoints(prevPoints => {
+          const updatedPoints = [...prevPoints];
+          updatedPoints[pointIndex] = {
+            ...updatedPoints[pointIndex],
+            documents: [
+                ...updatedPoints[pointIndex].documents || [],
+
+              {
+                id: addedDoc.id,
+                name: points[pointIndex].selectedFile!.name,
+                file: null
+              }
+            ],
+            selectedFile: null
+          };
+          return updatedPoints;
+        });
+      } else {
+        // Nouveau point - ajouter localement
+        setPoints(prevPoints => {
+          const updatedPoints = [...prevPoints];
+          updatedPoints[pointIndex] = {
+            ...updatedPoints[pointIndex],
+            documents: [
+              ...updatedPoints[pointIndex].documents,
+              {
+                name: points[pointIndex].selectedFile!.name,
+                file: points[pointIndex].selectedFile!.file
+              }
+            ],
+            selectedFile: null
+          };
+          return updatedPoints;
+        });
+      }
+      
+      toast.success("Document ajouté avec succès");
+    } catch (error) {
+      console.error("Erreur lors de l'ajout du document:", error);
+      toast.error("Erreur lors de l'ajout du document");
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, numero: number) => {
+    if (e.target.files?.[0]) {
+      setPoints(prevPoints => {
+        return prevPoints.map(point => {
+          if (point.numero === numero) {
+            return {
+              ...point,
+              selectedFile: {
+                name: e.target.files![0].name.substring(0, e.target.files![0].name.lastIndexOf('.')),
+                file: e.target.files![0],
+              }
+            };
+          }
+          return point;
+        });
+      });
+    }
+  };
+
+  const handlePVChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      setPv(e.target.files[0]);
+      setExistingPv(null); // Effacer l'ancien PV si on en upload un nouveau
+    }
+  };
+
+  const handleRemovePv = async () => {
+    if (!conseil) return;
+    
+    try {
+      await api.delete(`/conseils/${conseil.id}/pv`);
+      setPv(null);
+      setExistingPv(null);
+      toast.success("PV supprimé avec succès");
+    } catch (error) {
+      console.error("Erreur lors de la suppression du PV:", error);
+      toast.error("Erreur lors de la suppression du PV");
+    }
+  };
+
+  const handlePresenceChange = (membreId: number, statut: Presence["statut"]) => {
+    setPresences((prevPresences) =>
+      prevPresences.map((p) =>
+        p.membre === membreId
+          ? {
+            ...p,
+            statut,
+            document: statut === "D" ? p.document : undefined,
+            delegueA: statut === "D" ? p.delegueA : undefined,
+          }
+          : p
+      )
+    );
+  };
+
+  const handlePresenceDelegueChange = (membreId: number, delegueA?: number) => {
+    setPresences(presences.map(p => 
+      p.membre === membreId ? { ...p, delegueA } : p
+    ));
+  };
+
+  const handleFileDelegueChange = (membreId: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files?.[0]) {
+      setPresences(presences.map(p => 
+        p.membre === membreId ? { 
+          ...p, 
+          document: {
+            name: event.target.files![0].name,
+            file: event.target.files![0]
+          }
+        } : p
+      ));
+    }
+  };
+
+  const handleRemovePoint = async (pointId: number | undefined, numero: number) => {
+    if (pointId) {
+      try {
+        await deletePoint(pointId);
+        setPoints(points.filter(p => p.numero !== numero)
+          .map((p, i) => ({ ...p, numero: i + 1 })));
+        toast.success("Point supprimé avec succès");
+      } catch (error) {
+        console.error("Erreur lors de la suppression du point:", error);
+        toast.error("Erreur lors de la suppression du point");
+      }
+    } else {
+      // Point non encore sauvegardé
+      setPoints(points.filter(p => p.numero !== numero)
+        .map((p, i) => ({ ...p, numero: i + 1 })));
+    }
+  };
+
+  const handleRemoveDocument = async (pointId: number | undefined, docId: number | undefined, pointIndex: number, docIndex: number) => {
+    if (pointId && docId) {
+      try {
+        await deleteDocument(pointId, docId);
+        const updatedPoints = [...points];
+        updatedPoints[pointIndex].documents = updatedPoints[pointIndex].documents.filter((_, i) => i !== docIndex);
+        setPoints(updatedPoints);
+        toast.success("Document supprimé avec succès");
+      } catch (error) {
+        console.error("Erreur lors de la suppression du document:", error);
+        toast.error("Erreur lors de la suppression du document");
+      }
+    } else {
+      // Document non encore sauvegardé
+      const updatedPoints = [...points];
+      updatedPoints[pointIndex].documents = updatedPoints[pointIndex].documents.filter((_, i) => i !== docIndex);
+      setPoints(updatedPoints);
+    }
+  };
+
+  const handleUpdatePoint = (numero: number, newNom: string) => {
+    setPoints(points.map(p => 
+      p.numero === numero ? { ...p, nom: newNom } : p
+    ));
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    // Validation des informations
+    if (presences.every(p => p.statut === "A")) {
+      toast.error("Au moins un membre doit être présent.");
+      return;
+    }
+
+    for (const presence of presences) {
+      if (presence.statut === "D") {
+        if (!presence.delegueA) {
+          toast.error(`Un membre est délégué mais aucun délégataire n'a été sélectionné.`);
+          return;
+        }
+        if (!presence.document) {
+          toast.error(`Un membre est délégué mais aucun document de délégation n'a été ajouté.`);
+          return;
+        }
+      }
+    }
+
+    try {
+      if (!conseil) return;
+
+      // 1. Mettre à jour les informations de base du conseil
+      await updateConseil(conseil.id, { nom, dreunion: dReunion });
+
+      // 2. Mettre à jour les présences
+      for (const presence of presences) {
+        if (presence.id) {
+          // Présence existante - mise à jour
+          await updatePresence(presence.id, {
+            statut: presence.statut,
+            delegueA: presence.delegueA,
+            document: presence.document?.file
+          });
+        } else {
+          // Nouvelle présence - création
+          await addPresence(conseil.id, presence);
+        }
+      }
+
+      // 3. Mettre à jour les points
+      for (const point of points) {
+        if (point.id) {
+          // Point existant - mise à jour
+          await updatePoint(point.id, {
+            nom: point.nom,
+            numero: point.numero
+          });
+          
+          // Ajouter les nouveaux documents s'il y en a
+          if (point.selectedFile) {
+            const formData = new FormData();
+            formData.append('document', point.selectedFile.file);
+            formData.append('nom', point.selectedFile.name);
+            await addDocumentToPoint(point.id, formData);
+          }
+        } else {
+          // Nouveau point - création
+          const newPoint = await addPoint(conseil.id, {
+            nom: point.nom,
+            numero: point.numero,
+            documents: point.documents,
+            selectedFile: point.selectedFile
+          });
+          
+          // Mettre à jour l'ID du point dans le state local
+          setPoints(points.map(p => 
+            p.numero === point.numero ? { ...p, id: newPoint.id } : p
+          ));
+        }
+      }
+
+      // 4. Mettre à jour le PV s'il a été modifié
+      if (pv) {
+        const formData = new FormData();
+        formData.append('pv', pv);
+        await updatePv(conseil.id, formData);
+      }
+
+      toast.success("Le conseil a été mis à jour avec succès !");
+      navigate(`/conseils/${conseil.id}`);
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour du conseil :", error);
+      toast.error("Erreur lors de la mise à jour du conseil");
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (buttonRef.current) {
+        buttonRef.current.click();
+      }
+    }
+  };
+
+  if (isLoading || !conseil) {
+    return (
+      <Box p={3} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Typography variant="h6">Chargement en cours...</Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box p={3} sx={{ mx: "auto", textAlign: "right", direction: "rtl" }}>
+      <Typography variant="h4" gutterBottom>
+        تعديل مجلس الإدارة
+      </Typography>
+      <form onSubmit={handleSubmit}>
+        <TextField
+          fullWidth
+          label="المجلس"
+          value={nom}
+          onChange={(e) => setNom(e.target.value)}
+          required
+          margin="normal"
+        />
+        <TextField
+          fullWidth
+          label="تاريخ المجلس"
+          type="date"
+          value={dReunion}
+          onChange={(e) => setDReunion(e.target.value)}
+          required
+          margin="normal"
+          InputLabelProps={{ shrink: true }}
+        />
+
+        <Box sx={{ my: 3 }}>
+          <Typography variant="h6">جدول الأعمال :</Typography>
+          <List sx={{ direction: 'rtl' }}>
+            {points.map((point) => (
+              <Paper key={point.numero} sx={{ p: 2, mb: 2 }}>
+                <Box sx={{ position: "relative" }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <TextField
+                      value={point.nom}
+                      onChange={(e) => handleUpdatePoint(point.numero, e.target.value)}
+                      fullWidth
+                      variant="standard"
+                      sx={{ textAlign: 'right' }}
+                      InputProps={{
+                        startAdornment: (
+                          <Typography sx={{ mr: 1 }}>{point.numero}.</Typography>
+                        ),
+                      }}
+                    />
+                    <IconButton
+                      color="error"
+                      onClick={() => handleRemovePoint(point.id, point.numero)}
+                      title="حذف النقطة"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                </Box>
+                <List sx={{ direction: 'rtl' }}>
+                  {point.documents.map((doc, docIndex) => (
+                    <ListItem 
+                      key={doc.id || docIndex} 
+                      sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        pl: 2, 
+                        textAlign: 'right', 
+                        width: '100%' 
+                      }}
+                    >
+                      <ListItemText primary={`📄 ${doc.name}`} sx={{ flexGrow: 1 }} />
+                      <IconButton 
+                        color="error"
+                        onClick={() => handleRemoveDocument(point.id, doc.id, point.numero - 1, docIndex)}
+                        title="حذف الملف"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </ListItem>
+                  ))}
+                </List>
+
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Button 
+                    variant="contained" 
+                    component="label" 
+                    startIcon={<UploadFileIcon />}
+                    sx={{ width: '150px', marginLeft: '20px' }}
+                  >
+                    تحميل ملف
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      hidden
+                      onChange={(e) => handleFileChange(e, point.numero)}
+                    />
+                  </Button>
+                  <TextField
+                    sx={{
+                      direction: 'rtl',
+                      textAlign: 'right',
+                    }}
+                    label="إسم الملف"
+                    value={point.selectedFile?.name || ""}
+                    onChange={(e) =>
+                      setPoints(points.map((pt) => pt.numero === point.numero ? {
+                        ...pt,
+                        selectedFile: { 
+                          ...pt.selectedFile!, 
+                          name: e.target.value 
+                        }
+                      } : pt))
+                    }
+                    disabled={!point.selectedFile}
+                    InputLabelProps={{
+                      style: {
+                        textAlign: 'right',
+                      }
+                    }}
+                  />
+                  <IconButton
+                    color="success"
+                    onClick={() => handleAddDocument(point.id, point.numero)}
+                    disabled={!point.selectedFile}
+                  >
+                    <UploadFileIcon />
+                  </IconButton>
+                </Box>
+              </Paper>
+            ))}
+          </List>
+
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <TextField
+              label="إضافة نقطة"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              fullWidth
+              onKeyDown={handleKeyDown}
+              variant="outlined"
+              size="small"
+            />
+            <IconButton color="primary" onClick={handleAddPoint} ref={buttonRef}>
+              <AddIcon />
+            </IconButton>
+          </Box>
+        </Box>
+
+        <Typography variant="h6">الحضور :</Typography>
+
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>الاسم</TableCell>
+                <TableCell>الدور</TableCell>
+                <TableCell>الحضور</TableCell>
+                <TableCell>المفوض له</TableCell>
+                <TableCell>وثيقة التفويض</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {membres.map((membre) => {
+                const presence = presences.find(p => p.membre === membre.id);
+                return (
+                  <TableRow key={membre.id}>
+                    <TableCell>{membre.nom} {membre.prenom}</TableCell>
+                    <TableCell>{membre.role}</TableCell>
+                    <TableCell>
+                      <FormControl fullWidth variant="outlined" size="small">
+                        <InputLabel id={`presence-label-${membre.id}`}>الحضور</InputLabel>
+                        <Select
+                          labelId={`presence-label-${membre.id}`}
+                          value={presence?.statut || "P"}
+                          onChange={(e) =>
+                            handlePresenceChange(membre.id, e.target.value as "P" | "A" | "D")
+                          }
+                          label="الحضور"
+                        >
+                          {["P", "A", "D"].map((status) => (
+                            <MenuItem key={status} value={status}>
+                              {status === "P" ? "حاضر" : status === "A" ? "غائب" : "تفويض"}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </TableCell>
+
+                    <TableCell>
+                      <FormControl fullWidth variant="outlined" size="small">
+                        <InputLabel 
+                          id={`delegue-label-${membre.id}`} 
+                          shrink={presence?.delegueA ? true : false}
+                        >
+                          المفوض له
+                        </InputLabel>
+                        <Select
+                          labelId={`delegue-label-${membre.id}`}
+                          value={presence?.delegueA || ""}
+                          onChange={(e) => handlePresenceDelegueChange(
+                            membre.id, 
+                            e.target.value ? Number(e.target.value) : undefined
+                          )}
+                          label="المفوض له"
+                          disabled={presence?.statut !== "D"}
+                        >
+                          <MenuItem value="">
+                            <em>غير محدد</em>
+                          </MenuItem>
+                          {membres.filter((m) => m.id !== membre.id).map((m) => (
+                            <MenuItem key={m.id} value={m.id}>
+                              {m.nom} {m.prenom}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </TableCell>
+
+                    <TableCell>
+                      {presence?.statut === "D" && (
+                        <>
+                          <Button 
+                            variant="contained" 
+                            component="label" 
+                            startIcon={<UploadFileIcon />}
+                          >
+                            {presence.document ? "تغيير الوثيقة" : "تحميل وثيقة"}
+                            <input 
+                              type="file" 
+                              accept=".pdf" 
+                              hidden 
+                              onChange={(e) => handleFileDelegueChange(membre.id, e)} 
+                            />
+                          </Button>
+                          {presence.document && (
+                            <Typography sx={{ mt: 1 }}>
+                              {presence.document.name || "وثيقة مرفوعة"}
+                            </Typography>
+                          )}
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Box sx={{ display: "flex", justifyContent: 'space-between', mb: 2, marginTop: 2 }}>
+          <Box>
+            <Button 
+              variant="contained" 
+              component="label" 
+              startIcon={<UploadFileIcon />}
+              sx={{ width: '250px', marginLeft: '20px' }}
+            >
+              {existingPv ? "تغيير محضر المجلس" : "تحميل محضر المجلس"}
+              <input
+                type="file"
+                accept=".pdf"
+                hidden
+                onChange={handlePVChange}
+              />
+            </Button>
+
+            {(existingPv || pv) && (
+              <Typography sx={{ mt: 1 }}>
+                {pv ? pv.name : existingPv}
+              </Typography>
+            )}
+          </Box>
+
+          {(existingPv || pv) && (
+            <IconButton
+              color="error"
+              onClick={handleRemovePv}
+              title="حذف محضر المجلس"
+            >
+              <DeleteIcon />
+            </IconButton>
+          )}
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+          <Button 
+            variant="outlined" 
+            color="secondary" 
+            onClick={() => navigate(`/conseils/${id}`)}
+          >
+            إلغاء
+          </Button>
+          <Button type="submit" variant="contained">
+            حفظ التعديلات
+          </Button>
+        </Box>
+      </form>
+    </Box>
+  );
+};
+
+export default ModifierConseil;

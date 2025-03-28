@@ -1,0 +1,112 @@
+/* contract.css */
+
+
+
+#contract-content {
+    max-width: 836px;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #fff;
+
+/* body */
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    direction: rtl;
+    text-align: justify;
+}
+
+.contract-page {
+    width: 794px;
+    height: 1123px;
+    padding: 40px;
+    border: 2px solid black;
+    margin-bottom: 20px;
+    background: #fff;
+    page-break-after: always;
+    box-sizing: border-box; /* Assure que padding et border sont inclus dans les dimensions */
+}
+
+.title h1 {
+    font-size: 20px;
+    text-align: center;
+    margin-bottom: 0px;
+    color: #333;
+}
+
+.footer h3 {
+    font-size: 18px;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.section {
+    margin-bottom: 10px;
+}
+.section h4{
+    margin-bottom: -10px;
+    margin-top: -10px;
+    text-decoration: underline;
+}
+
+.section.bold {
+    font-weight: bold;
+}
+
+.section .data {
+    font-weight: bold;
+    color: #555;
+}
+
+.section .colored {
+    color: #007bff;
+}
+
+.btn-action {
+   
+    
+    padding: 10px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+/* taau d'amortissement */
+.table{
+    width: 100%;
+    border: 1px solid #ddd;
+    background-color: #ddd;
+}
+
+.ta-head {
+    background-color: #f5f5f5;
+    
+}
+
+.ta-cell {
+    text-align: right;
+    
+    padding: 2.3px 8px;
+    
+}
+.ta-cell.date {
+    width: auto;
+}
+.ta-cell.mensualite {
+   font-weight: bold;
+}
+
+
+.ta-row:nth-of-type(even) {
+    background-color: #f9f9f9;
+}
+
+
+
+

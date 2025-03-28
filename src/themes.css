@@ -1,0 +1,23 @@
+/*theme light default*/
+
+:root {
+    --bg-color: #f4f4f4;
+    --text-color: #333;
+    --primary-color: #007bff;
+    --secondary-color: #ced4da;
+    --accent-color: #212529;
+    --scrollbar-color:#0202021e;
+    --transition-speed: .5s;
+  }
+  
+  [data-theme="dark"] {
+    --bg-color: #12131a;
+    --text-color: #bdc7d8;
+    --primary-color: #004fee;
+    --secondary-color: #2e303e;
+    --accent-color: #e1ecff;
+    --scrollbar-color:#dfd8d891;
+  }
+
+ 
+  
